@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Mini Website Code Editor</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', sans-serif;
+      background: #f4f4f4;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+    }
+
+    h2 {
+      text-align: center;
+      margin: 10px 0;
+    }
+
+    .tabs {
+      display: flex;
+      justify-content: center;
+      background: #ddd;
+      border-bottom: 1px solid #ccc;
+    }
+
+    .tab-button {
+      padding: 10px 20px;
+      border: none;
+      background: none;
+      cursor: pointer;
+      font-weight: bold;
+    }
+
+    .tab-button.active {
+      background: white;
+      border-bottom: 2px solid #0077cc;
+      color: #0077cc;
+    }
+
+    .editor-container {
+      flex: 1;
+      display: none;
+      flex-direction: column;
+      padding: 10px;
+      overflow: hidden;
+      height: 100%;
+    }
+
+    .editor-container.active {
+      display: flex;
+    }
+
+    .editor {
+      display: flex;
+      flex: 1;
+      border: 1px solid #ccc;
+      background: white;
+      overflow: hidden;
+      min-height: 0;
+    }
+
+    .line-numbers {
+      background: #eee;
+      padding: 10px 5px;
+      text-align: right;
+      font-family: monospace;
+      font-size: 14px;
+      border-right: 1px solid #ccc;
+      color: #888;
+      user-select: none;
+      white-space: pre;
+      overflow: auto;
+      height: 100%;
+    }
+
+    .line-numbers span.error {
+      background: #ffd6d6;
+      color: red;
+    }
+
+    textarea {
+      flex: 1;
+      padding: 10px;
+      font-family: monospace;
+      font-size: 14px;
+      resize: none;
+      border: none;
+      outline: none;
+      white-space: pre;
+      overflow: auto;
+      height: 100%;
+    }
+
+    input[type="text"] {
+      margin-top: 5px;
+      padding: 5px;
+      font-size: 14px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+
+    .buttons {
+      text-align: center;
+      padding: 15px;
+      background-color: #eaeaea;
+    }
+
+    button {
+      padding: 10px 20px;
+      font-size: 16px;
+      cursor: pointer;
+      background-color: #0077cc;
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      margin: 5px;
+    }
+
+    button:hover {
+      background-color: #005fa3;
+    }
+  </style>
+</head>
+<body>
+  <h2>Mini Web Editor</h2>
+
+  <div class="tabs">
+    <button class="tab-button active" onclick="switchTab('html', event)">HTML</button>
+    <button class="tab-button" onclick="switchTab('css', event)">CSS</button>
+    <button class="tab-button" onclick="switchTab('js', event)">JavaScript</button>
+  </div>
+
+  <div id="html" class="editor-container active">
+    <div class="editor">
+      <div class="line-numbers" id="lineNumbersHTML">1</div>
+      <textarea id="htmlCode" oninput="updateLineNumbers('htmlCode', 'lineNumbersHTML')" onscroll="syncScroll('htmlCode', 'lineNumbersHTML')"><h1>Hello world</h1></textarea>
+    </div>
+    <input type="text" id="htmlFilename" value="index.html" placeholder="Nama file HTML" />
+  </div>
+
+  <div id="css" class="editor-container">
+    <div class="editor">
+      <div class="line-numbers" id="lineNumbersCSS">1</div>
+      <textarea id="cssCode" oninput="updateLineNumbers('cssCode', 'lineNumbersCSS')" onscroll="syncScroll('cssCode', 'lineNumbersCSS')">h1 { color: blue; }</textarea>
+    </div>
+    <input type="text" id="cssFilename" value="style.css" placeholder="Nama file CSS" />
+  </div>
+
+  <div id="js" class="editor-container">
+    <div class="editor">
+      <div class="line-numbers" id="lineNumbersJS">1</div>
+      <textarea id="jsCode" oninput="updateLineNumbers('jsCode', 'lineNumbersJS')" onscroll="syncScroll('jsCode', 'lineNumbersJS')">
+console.log("Hello World");
+      </textarea>
+    </div>
+    <input type="text" id="jsFilename" value="script.js" placeholder="Nama file JavaScript" />
+  </div>
+
+  <div class="buttons">
+    <button onclick="runCode()">Jalankan</button>
+    <button onclick="downloadFiles()">Unduh Semua File</button>
+  </div>
+
+  <script>
+    function runCode() {
+      clearErrorHighlight();
+
+      const html = document.getElementById("htmlCode").value;
+      const css = document.getElementById("cssCode").value;
+      const js = document.getElementById("jsCode").value;
+
+      const code = `
+        <!DOCTYPE html>
+        <html lang="id">
+        <head>
+          <meta charset="UTF-8">
+          <style>${css}</style>
+        </head>
+        <body>
+          ${html}
+          <script>
+            try {
+              ${js}
+            } catch (e) {
+              document.body.innerHTML += '<pre style="color:red;">' + e + '</pre>';
+              parent.postMessage({ line: e.lineNumber || 2 }, '*');
+            }
+          <\/script>
+        </body>
+        </html>
+      `;
+
+      const newWindow = window.open('', '_blank');
+      newWindow.document.open();
+      newWindow.document.write(code);
+      newWindow.document.close();
+    }
+
+    function downloadFiles() {
+      const html = document.getElementById("htmlCode").value;
+      const css = document.getElementById("cssCode").value;
+      const js = document.getElementById("jsCode").value;
+
+      const htmlName = document.getElementById("htmlFilename").value || "index.html";
+      const cssName = document.getElementById("cssFilename").value || "style.css";
+      const jsName = document.getElementById("jsFilename").value || "script.js";
+
+      const htmlContent = `<!DOCTYPE html>
+<html>
+<head>
+  <link rel="stylesheet" href="${cssName}">
+</head>
+<body>
+  ${html}
+  <script src="${jsName}"><\/script>
+</body>
+</html>`;
+
+      downloadFile(htmlName, htmlContent);
+      downloadFile(cssName, css);
+      downloadFile(jsName, js);
+    }
+
+    function downloadFile(filename, content) {
+      const blob = new Blob([content], { type: "text/plain" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = filename;
+      a.style.display = "none";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    }
+
+    window.addEventListener("message", function(event) {
+      const line = event.data.line;
+      if (line) highlightErrorLine(line);
+    });
+
+    function highlightErrorLine(lineNum) {
+      const lineNumbers = document.getElementById("lineNumbersJS");
+      const lines = lineNumbers.innerText.split('\n');
+      lineNumbers.innerHTML = lines.map((line, i) => {
+        return `<span class="${i + 1 === lineNum ? 'error' : ''}">${i + 1}</span>`;
+      }).join('\n');
+    }
+
+    function clearErrorHighlight() {
+      const lineNumbers = document.getElementById("lineNumbersJS");
+      const lines = lineNumbers.innerText.split('\n');
+      lineNumbers.innerHTML = lines.map((_, i) => `<span>${i + 1}</span>`).join('\n');
+    }
+
+    function updateLineNumbers(textareaId, lineNumberId) {
+      const textarea = document.getElementById(textareaId);
+      const lineNumbers = document.getElementById(lineNumberId);
+      const lines = textarea.value.split('\n').length;
+      lineNumbers.innerHTML = Array.from({ length: lines }, (_, i) => `<span>${i + 1}</span>`).join('\n');
+    }
+
+    function syncScroll(textareaId, lineNumberId) {
+      const textarea = document.getElementById(textareaId);
+      const lineNumbers = document.getElementById(lineNumberId);
+      lineNumbers.scrollTop = textarea.scrollTop;
+    }
+
+    function switchTab(tab, event) {
+      const tabs = document.querySelectorAll('.editor-container');
+      const buttons = document.querySelectorAll('.tab-button');
+
+      tabs.forEach(t => t.classList.remove('active'));
+      buttons.forEach(b => b.classList.remove('active'));
+
+      document.getElementById(tab).classList.add('active');
+      event.target.classList.add('active');
+    }
+
+    window.onload = () => {
+      updateLineNumbers('htmlCode', 'lineNumbersHTML');
+      updateLineNumbers('cssCode', 'lineNumbersCSS');
+      updateLineNumbers('jsCode', 'lineNumbersJS');
+    };
+  </script>
+</body>
+</html>
